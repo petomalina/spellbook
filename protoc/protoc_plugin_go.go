@@ -1,18 +1,22 @@
 package protoc
 
 import (
+	"context"
+	"github.com/magefile/mage/sh"
+	"os"
 	"path/filepath"
 	"strings"
 )
 
-type ProtocPluginGo struct {
+type PluginGo struct {
 	Out       string
 	Opts      string
 	Targets   []string
 	StripPath string
+	Includes  []string
 }
 
-func (p ProtocPluginGo) MakeArgs() []string {
+func (p PluginGo) MakeArgs() []string {
 	args := []string{"--go_out=" + p.OutDir()}
 
 	if p.Opts != "" {
@@ -22,27 +26,15 @@ func (p ProtocPluginGo) MakeArgs() []string {
 	return append(args, p.Targets...)
 }
 
-func (p ProtocPluginGo) OutDir() string {
+func (p PluginGo) OutDir() string {
 	return filepath.Join(p.Out, filepath.Dir(strings.TrimPrefix(p.Targets[0], p.StripPath)))
 }
 
-type ProtocPluginGoGRPC struct {
-	Out       string
-	Opts      string
-	Targets   []string
-	StripPath string
-}
+func (p PluginGo) Build(ctx context.Context) error {
+	_ = os.MkdirAll(p.OutDir(), os.ModePerm)
 
-func (p ProtocPluginGoGRPC) MakeArgs() []string {
-	args := []string{"--go-grpc_out=" + p.OutDir()}
+	args := append([]string{}, p.Includes...)
+	args = append(args, p.MakeArgs()...)
 
-	if p.Opts != "" {
-		args = append(args, "--go-grpc_opt="+p.Opts)
-	}
-
-	return append(args, p.Targets...)
-}
-
-func (p ProtocPluginGoGRPC) OutDir() string {
-	return filepath.Join(p.Out, filepath.Dir(strings.TrimPrefix(p.Targets[0], p.StripPath)))
+	return sh.RunV("protoc", args...)
 }
